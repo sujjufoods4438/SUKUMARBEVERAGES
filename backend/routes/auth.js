@@ -6,7 +6,7 @@ const Referral = require('../models/Referral');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { protect } = require('../middleware/auth');
-const { sendOtpEmail, sendWelcomeEmail } = require('../utils/mailer');
+const { sendOtpEmail, sendWelcomeEmail, sendOtpSms } = require('../utils/mailer');
 
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -27,14 +27,24 @@ router.post('/send-otp', async (req, res) => {
     const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    otpStore.set(email, { emailOtp, phoneOtp, expiresAt: Date.now() + 10 * 60 * 1000 });
+    otpStore.set(email, { emailOtp, expiresAt: Date.now() + 10 * 60 * 1000 });
 
     // Send email OTP
-    await sendOtpEmail(email, name || 'User', emailOtp);
-    // Mock SMS send for phone
-    console.log(`[MOCK SMS] To: ${phone} | OTP: ${phoneOtp}`);
-
-    res.json({ message: 'OTPs sent successfully to email and phone.' });
+    try {
+      await sendOtpEmail(email, name || 'User', emailOtp);
+      return res.json({ message: 'Email OTP sent successfully.' });
+    } catch (err) {
+      console.error('Email OTP send failed:', err.message || err);
+      const fallback = process.env.EMAIL_OTP_DEBUG === 'true';
+      if (fallback) {
+        return res.json({
+          message: 'Email send failed; returning OTP in debug mode.',
+          emailOtp,
+          debug: true
+        });
+      }
+      return res.status(500).json({ message: err.message || 'Failed to send email OTP' });
+    }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -52,8 +62,8 @@ router.post('/register', async (req, res) => {
       otpStore.delete(email);
       return res.status(400).json({ message: 'OTPs have expired. Please request again.' });
     }
-    if (storedOtp.emailOtp !== emailOtp || storedOtp.phoneOtp !== phoneOtp) {
-      return res.status(400).json({ message: 'Invalid OTPs provided' });
+    if (storedOtp.emailOtp !== emailOtp) {
+      return res.status(400).json({ message: 'Invalid Email OTP provided' });
     }
 
     if (!['Vijayawada', 'Hyderabad'].includes(city)) {

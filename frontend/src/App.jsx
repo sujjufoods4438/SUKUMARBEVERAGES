@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 
 import Navbar    from './components/Navbar';
 import Footer    from './components/Footer';
@@ -18,25 +18,8 @@ import BookWater from './pages/BookWater';
 import Distributor from './pages/Distributor';
 import Delivery    from './pages/Delivery';
 import Chatbot     from './components/Chatbot';
-
-// Route guards
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh' }}><div className="spinner"/></div>;
-  return user ? children : <Navigate to="/login"/>;
-};
-
-const AdminRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh' }}><div className="spinner"/></div>;
-  return user?.role === 'admin' ? children : <Navigate to="/dashboard"/>;
-};
-
-const RoleRoute = ({ children, roles }) => {
-  const { user, loading } = useAuth();
-  if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh' }}><div className="spinner"/></div>;
-  return user && roles.includes(user.role) ? children : <Navigate to="/login"/>;
-};
+import FirebaseAuth from './pages/FirebaseAuth';
+import VerifyEmail from './pages/VerifyEmail';
 
 // Pages with nav+footer
 const Layout = ({ children, withFooter = true }) => (
@@ -51,38 +34,24 @@ const Layout = ({ children, withFooter = true }) => (
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/"         element={<ProtectedRoute><Layout><Home/></Layout></ProtectedRoute>}/>
-      <Route path="/benefits" element={<ProtectedRoute><Layout><Benefits/></Layout></ProtectedRoute>}/>
-      <Route path="/process"  element={<ProtectedRoute><Layout><Process/></Layout></ProtectedRoute>}/>
-      <Route path="/pricing"  element={<ProtectedRoute><Layout><Pricing/></Layout></ProtectedRoute>}/>
-      <Route path="/locations"element={<ProtectedRoute><Layout><Locations/></Layout></ProtectedRoute>}/>
+      <Route path="/" element={<Layout><Home/></Layout>}/>
+      <Route path="/benefits" element={<Layout><Benefits/></Layout>}/>
+      <Route path="/process" element={<Layout><Process/></Layout>}/>
+      <Route path="/pricing" element={<Layout><Pricing/></Layout>}/>
+      <Route path="/locations" element={<Layout><Locations/></Layout>}/>
       <Route path="/book-water" element={<Layout><BookWater/></Layout>}/>
 
-      <Route path="/login"    element={<Layout withFooter={false}><Login/></Layout>}/>
+      <Route path="/login" element={<Layout withFooter={false}><Login/></Layout>}/>
       <Route path="/register" element={<Layout withFooter={false}><Register/></Layout>}/>
+      <Route path="/firebase-auth" element={<FirebaseAuth/>}/>
+      <Route path="/verify-email" element={<VerifyEmail/>}/>
 
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <Layout><Dashboard/></Layout>
-        </ProtectedRoute>
-      }/>
-      <Route path="/admin" element={
-        <AdminRoute>
-          <Layout><Admin/></Layout>
-        </AdminRoute>
-      }/>
-      <Route path="/distributor" element={
-        <RoleRoute roles={['distributor', 'admin']}>
-          <Layout><Distributor/></Layout>
-        </RoleRoute>
-      }/>
-      <Route path="/delivery" element={
-        <RoleRoute roles={['delivery', 'admin']}>
-          <Layout><Delivery/></Layout>
-        </RoleRoute>
-      }/>
+      <Route path="/dashboard" element={<Layout><Dashboard/></Layout>}/>
+      <Route path="/admin" element={<Layout><Admin/></Layout>}/>
+      <Route path="/distributor" element={<Layout><Distributor/></Layout>}/>
+      <Route path="/delivery" element={<Layout><Delivery/></Layout>}/>
 
-      <Route path="*" element={<Navigate to="/login"/>}/>
+      <Route path="*" element={<Navigate to="/"/>}/>
     </Routes>
   );
 }

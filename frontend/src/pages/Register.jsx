@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { ArrowRight, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '../utils/firebase';
 
 export default function Register() {
   const { register, sendOtp, API } = useAuth();
@@ -12,9 +13,11 @@ export default function Register() {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [refValid, setRefValid] = useState(null);
+  const [confirmationResult, setConfirmationResult] = useState(null);
 
   const [step, setStep] = useState(1);
   const [successData, setSuccessData] = useState(null);
+  const [debugEmailOtp, setDebugEmailOtp] = useState('');
   const [form, setForm] = useState({
     name: '', email: '', phone: '', password: '', confirmPassword: '',
     city: 'Vijayawada', street: '', pincode: '',
@@ -36,6 +39,14 @@ export default function Register() {
     return () => clearTimeout(timer);
   }, [form.referralCode]);
 
+  const setupRecaptcha = () => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible'
+      });
+    }
+  };
+
   const handleSendOtp = async (e) => {
     e.preventDefault();
     if (form.password.length < 8 || !/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/.test(form.password)) {
@@ -46,11 +57,25 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await sendOtp(form.email, form.phone, form.name);
+      // 1. Send Email OTP (Backend)
+      const data = await sendOtp(form.email, form.phone, form.name);
+      if (data?.emailOtp) {
+        setDebugEmailOtp(data.emailOtp);
+        toast.success(`Email OTP (debug): ${data.emailOtp}`);
+      }
+      
+      // 2. Send Phone OTP (Firebase)
+      setupRecaptcha();
+      const formattedPhone = form.phone.startsWith('+') ? form.phone : `+91${form.phone}`;
+      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
+      setConfirmationResult(confirmation);
+
       toast.success('OTPs sent to your Email and Phone!');
       setStep(2);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send OTPs');
+      console.error(err);
+      const message = err.response?.data?.message || err.message || 'Failed to send OTPs. Ensure phone format is correct.';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -60,11 +85,15 @@ export default function Register() {
     e.preventDefault();
     setLoading(true);
     try {
+      // 1. Verify Phone OTP via Firebase
+      await confirmationResult.confirm(form.phoneOtp);
+      
+      // 2. Register via Backend (Verified phone code on client)
       const user = await register(form);
       setSuccessData(user);
       toast.success(`Registration complete!`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Registration failed');
+      toast.error(err.response?.data?.message || 'Verification failed. Check your OTPs.');
     } finally {
       setLoading(false);
     }
@@ -77,6 +106,11 @@ export default function Register() {
           <div style={{ width:72, height:72, borderRadius:'50%', background:'rgba(34,197,94,0.1)', color:'var(--success)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
             <CheckCircle size={36}/>
           </div>
+          {debugEmailOtp && (
+            <div style={{ margin:'0 auto 12px', padding:'12px 16px', border:'1px solid rgba(96,165,250,0.4)', background:'rgba(59,130,246,0.08)', borderRadius:12, color:'#0369a1' }}>
+              Debug email OTP: <strong>{debugEmailOtp}</strong>
+            </div>
+          )}
           <h2 style={{ fontSize:24, fontWeight:800, marginBottom:8 }}>Registration Complete!</h2>
           <p style={{ color:'var(--text-muted)', marginBottom:24 }}>You've successfully secured your account and 3 FREE bottles.</p>
           
@@ -109,6 +143,8 @@ export default function Register() {
             </span>
           ))}
         </div>
+        
+        <div id="recaptcha-container"></div>
 
         <div className="card">
           {step === 1 ? (
@@ -201,6 +237,11 @@ export default function Register() {
                 <p style={{ fontSize:11, color:'var(--warning)', marginTop:8 }}>(Since this is a demo, check the backend console for the OTP!)</p>
               </div>
 
+              {debugEmailOtp && (
+                <div style={{ background:'rgba(59,130,246,0.08)', border:'1px solid rgba(59,130,246,0.4)', borderRadius:10, padding:'12px 14px', marginBottom:16, color:'#0369a1' }}>
+                  Debug Email OTP: <strong>{debugEmailOtp}</strong>
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Email OTP *</label>
                 <input className="form-input" placeholder="Enter 6-digit Email OTP" value={form.emailOtp}

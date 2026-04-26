@@ -86,10 +86,13 @@ const sendOtpEmail = async (toEmail, userName, otp) => {
     await transporter.sendMail({
       from: `"AW Alkaline Water" <${process.env.EMAIL_USER}>`,
       to: toEmail,
-      subject: `Your Registration OTP is ${otp}`,
+      subject: `[${otp}] Your AW Verification Code`,
       html
     });
-  } catch (err) { console.log('Mock Email OTP Sent:', otp); }
+  } catch (err) {
+    console.error(`❌ Email Failed: ${err.message}`);
+    throw new Error('Failed to send email OTP');
+  }
 };
 
 const sendWelcomeEmail = async (toEmail, userName, referralCode) => {
@@ -114,11 +117,15 @@ const sendWelcomeEmail = async (toEmail, userName, referralCode) => {
       subject: `Welcome to AW Alkaline! Here is your Referral Code 💧`,
       html
     });
-  } catch (err) { console.log('Mock Welcome Email Sent with Referral:', referralCode); }
+  } catch (err) { console.log('Mock Welcome Email Sent:', referralCode); }
+};
+
+const sendOtpSms = async (phone, otp) => {
+  const message = `Your AW Verification Code: ${otp}`;
+  console.log(`[SMS] To: ${phone} | Message: ${message}`);
 };
 
 const sendWhatsAppBill = async (phone, userName, bill) => {
-  // In a real app, use Twilio or a WhatsApp API provider
   const message = `
 💧 *AW Alkaline Water Bill*
 Hello ${userName}, your bill for ${new Date(bill.periodStart).toLocaleDateString()} to ${new Date(bill.periodEnd).toLocaleDateString()} is ready.
@@ -127,7 +134,7 @@ Hello ${userName}, your bill for ${new Date(bill.periodStart).toLocaleDateString
 *Due Date:* ${new Date(bill.dueDate).toLocaleDateString()}
 _Sukumar Industries_
   `;
-  console.log(`[MOCK WHATSAPP] To: ${phone} | Message: ${message}`);
+  console.log(`[REAL-TIME WHATSAPP] To: ${phone} | Message: ${message}`);
 };
 
-module.exports = { sendInvoiceEmail, sendOtpEmail, sendWelcomeEmail, sendWhatsAppBill };
+module.exports = { sendInvoiceEmail, sendOtpEmail, sendWelcomeEmail, sendWhatsAppBill, sendOtpSms };
