@@ -1,0 +1,53 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+require('dotenv').config();
+
+const app = express();
+
+// Middleware
+app.use(helmet());
+app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(express.json());
+
+// Rate limiting
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+app.use('/api/', limiter);
+
+// Routes
+app.use('/api/auth',     require('./routes/auth'));
+app.use('/api/products', require('./routes/products'));
+app.use('/api/orders',   require('./routes/orders'));
+app.use('/api/billing',  require('./routes/billing'));
+app.use('/api/referral', require('./routes/referral'));
+app.use('/api/admin',    require('./routes/admin'));
+app.use('/api/chatbot',  require('./routes/chatbot'));
+
+// MongoDB Connection
+let mongoServer;
+async function connectDB() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 10000 });
+    console.log('✅ Connected to MongoDB Atlas');
+  } catch (err) {
+    console.error('❌ Atlas Connection Error:', err.message);
+    console.log('⚠️ Falling back to In-Memory MongoDB...');
+    try {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      mongoServer = await MongoMemoryServer.create();
+      const mongoUri = mongoServer.getUri();
+      await mongoose.connect(mongoUri);
+      console.log('✅ Connected to In-Memory MongoDB (Data will reset on restart)');
+    } catch (memErr) {
+      console.error('❌ Failed to start In-Memory MongoDB:', memErr.message);
+    }
+  }
+}
+connectDB().then(() => {
+  require('./utils/seedAdmin')();
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
