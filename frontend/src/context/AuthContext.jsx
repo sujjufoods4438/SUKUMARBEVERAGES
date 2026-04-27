@@ -4,7 +4,7 @@ import axios from 'axios';
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
-const API = import.meta.env.VITE_API_URL || '/api';
+const API = import.meta.env.VITE_API_URL || 'https://sukumarbeverages.onrender.com/api';
 
 // Create axios instance with default config
 const api = axios.create({
