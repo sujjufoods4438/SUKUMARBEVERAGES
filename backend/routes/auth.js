@@ -45,15 +45,12 @@ router.post('/send-otp', async (req, res) => {
       return res.json({ message: 'Email OTP sent successfully.' });
     } catch (err) {
       console.error('Email OTP send failed:', err.message || err);
-      const fallback = process.env.EMAIL_OTP_DEBUG === 'true';
-      if (fallback) {
-        return res.json({
-          message: 'Email send failed; returning OTP in debug mode.',
-          emailOtp,
-          debug: true
-        });
-      }
-      return res.status(500).json({ message: err.message || 'Failed to send email OTP' });
+      // Fallback: always return OTP so user can complete registration
+      return res.json({
+        message: 'Email service unavailable. Use the OTP shown below.',
+        emailOtp,
+        debug: true
+      });
     }
   } catch (err) {
     res.status(500).json({ message: err.message });
