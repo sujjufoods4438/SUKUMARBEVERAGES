@@ -37,6 +37,24 @@ app.use((req, res, next) => {
   next();
 });
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Sukumar Beverages API is running!',
+    status: 'OK',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      products: '/api/products',
+      orders: '/api/orders',
+      billing: '/api/billing',
+      referral: '/api/referral',
+      admin: '/api/admin',
+      chatbot: '/api/chatbot',
+    }
+  });
+});
+
 // Routes
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
