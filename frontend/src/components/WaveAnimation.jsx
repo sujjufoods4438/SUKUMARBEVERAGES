@@ -1,21 +1,28 @@
 import React, { useEffect, useRef } from 'react';
 
 export default function WaveAnimation() {
+  const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const logoRef = useRef(null);
 
   useEffect(() => {
+    const container = containerRef.current;
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!container || !canvas) return;
+
     const ctx = canvas.getContext('2d');
-    let w, h;
+    let w = 0, h = 0;
     let mouse = { x: -1000, y: -1000 };
     let tick = 0;
-    let animationId;
+    let animationId = null;
+    let isActive = true;
 
+    // Resize canvas to match container dimensions exactly
     const resize = () => {
-      w = canvas.width = window.innerWidth;
-      h = canvas.height = window.innerHeight;
+      if (!container || !canvas) return;
+      const rect = container.getBoundingClientRect();
+      w = canvas.width = rect.width;
+      h = canvas.height = rect.height;
     };
 
     const handleMouseMove = (e) => {
@@ -29,7 +36,12 @@ export default function WaveAnimation() {
       mouse.y = -1000;
     };
 
-    window.addEventListener('resize', resize);
+    // Use ResizeObserver for precise container sizing
+    const resizeObserver = new ResizeObserver(() => {
+      resize();
+    });
+    resizeObserver.observe(container);
+
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseleave', handleMouseLeave);
     resize();
@@ -54,8 +66,11 @@ export default function WaveAnimation() {
     }));
 
     function draw() {
-      ctx.fillStyle = '#000d1a';
-      ctx.fillRect(0, 0, w, h);
+      if (!isActive || !ctx) return;
+
+      // Clear canvas instead of filling with solid color
+      // This allows the parent section's background to show through
+      ctx.clearRect(0, 0, w, h);
 
       // Draw particles
       particles.forEach(p => {
@@ -120,37 +135,40 @@ export default function WaveAnimation() {
     // Logo fade-in
     if (logoRef.current) {
       setTimeout(() => {
-        logoRef.current.style.opacity = '1';
-        logoRef.current.style.transform = 'translateX(-50%) translateY(0)';
+        if (logoRef.current) {
+          logoRef.current.style.opacity = '1';
+          logoRef.current.style.transform = 'translateX(-50%) translateY(0)';
+        }
       }, 800);
     }
 
     return () => {
-      cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', resize);
+      isActive = false;
+      if (animationId) cancelAnimationFrame(animationId);
+      resizeObserver.disconnect();
       canvas.removeEventListener('mousemove', handleMouseMove);
       canvas.removeEventListener('mouseleave', handleMouseLeave);
     };
   }, []);
 
   return (
-    <div style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      zIndex: 0,
-      pointerEvents: 'none',
-      overflow: 'hidden'
-    }}>
+    <div
+      ref={containerRef}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
+        pointerEvents: 'none',
+        overflow: 'hidden',
+      }}
+    >
       <canvas
         ref={canvasRef}
         style={{
           display: 'block',
-          position: 'absolute',
-          top: 0,
-          left: 0,
           width: '100%',
           height: '100%',
         }}

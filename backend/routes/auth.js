@@ -8,8 +8,18 @@ const Product = require('../models/Product');
 const { protect } = require('../middleware/auth');
 const { sendOtpEmail, sendWelcomeEmail, sendOtpSms } = require('../utils/mailer');
 
-const generateToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+// Validate JWT_SECRET is configured
+if (!process.env.JWT_SECRET) {
+  console.error('❌ FATAL: JWT_SECRET is not set in environment variables');
+  console.error('   Set JWT_SECRET in your .env file before starting the server');
+}
+
+const generateToken = (id) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+};
 
 // Simple in-memory store for OTPs (in production, use Redis or DB with TTL)
 const otpStore = new Map();
@@ -147,10 +157,32 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user || !(await user.matchPassword(password))) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
     }
+
+    // Find user (case-insensitive email search)
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // Check if user account is active
+    if (user.isActive === false) {
+      return res.status(401).json({ message: 'Account is deactivated. Please contact support.' });
+    }
+
+    // Verify password
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // Generate token
+    const token = generateToken(user._id);
+
     res.json({
       _id: user._id,
       name: user.name,
@@ -158,10 +190,11 @@ router.post('/login', async (req, res) => {
       role: user.role,
       referralCode: user.referralCode,
       discountPercent: user.discountPercent,
-      token: generateToken(user._id)
+      token
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error during login. Please try again later.' });
   }
 });
 

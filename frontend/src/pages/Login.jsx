@@ -19,7 +19,32 @@ export default function Login() {
       toast.success(`Welcome back, ${user.name}! 💧`);
       navigate(user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      console.error('Login error details:', err);
+
+      let errorMessage = 'Login failed. Please try again.';
+
+      if (err.response) {
+        // Server responded with error status
+        const status = err.response.status;
+        const serverMessage = err.response.data?.message;
+
+        if (status === 401) {
+          errorMessage = serverMessage || 'Invalid email or password. Please check your credentials.';
+        } else if (status === 404) {
+          errorMessage = 'Login service not found. Please try again later.';
+        } else if (status === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        } else if (serverMessage) {
+          errorMessage = serverMessage;
+        }
+      } else if (err.request) {
+        // Request made but no response received
+        errorMessage = 'Network error. Please check your internet connection or try again later.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
