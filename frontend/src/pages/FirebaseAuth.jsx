@@ -1,7 +1,7 @@
 // FirebaseAuth.jsx — Tab switcher for Email and Phone OTP
 import { useState } from "react";
-import EmailOTP from "./EmailOTP";
-import PhoneOTP from "./PhoneOTP";
+import EmailOTP from "../components/EmailOTP";
+import PhoneOTP from "../components/PhoneOTP";
 
 export default function FirebaseAuth() {
   const [tab, setTab] = useState("phone"); // "phone" | "email"

@@ -4,8 +4,9 @@ import axios from 'axios';
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-// Set VITE_API_URL in Netlify environment variables to your deployed backend URL.
+const API = import.meta.env.VITE_API_URL || '/api';
+// Set VITE_API_URL in Netlify/environment variables to your deployed backend URL.
+// Locally, '/api' uses the Vite proxy in vite.config.js to avoid CORS issues.
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser]     = useState(null);

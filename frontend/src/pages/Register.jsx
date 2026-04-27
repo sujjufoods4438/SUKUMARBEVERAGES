@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { ArrowRight, CheckCircle, Eye, EyeOff } from 'lucide-react';
-import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '../utils/firebase';
+import { auth } from '../utils/firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 export default function Register() {
   const { register, sendOtp, API } = useAuth();
@@ -14,6 +15,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [refValid, setRefValid] = useState(null);
   const [confirmationResult, setConfirmationResult] = useState(null);
+  const [phoneOtpRequired, setPhoneOtpRequired] = useState(false);
 
   const [step, setStep] = useState(1);
   const [successData, setSuccessData] = useState(null);
@@ -64,13 +66,20 @@ export default function Register() {
         toast.success(`Email OTP (debug): ${data.emailOtp}`);
       }
       
-      // 2. Send Phone OTP (Firebase)
-      setupRecaptcha();
-      const formattedPhone = form.phone.startsWith('+') ? form.phone : `+91${form.phone}`;
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
-      setConfirmationResult(confirmation);
-
-      toast.success('OTPs sent to your Email and Phone!');
+      try {
+        setupRecaptcha();
+        const formattedPhone = form.phone.startsWith('+') ? form.phone : `+91${form.phone}`;
+        const confirmation = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
+        setConfirmationResult(confirmation);
+        setPhoneOtpRequired(true);
+        toast.success('OTPs sent to your Email and Phone!');
+      } catch (phoneErr) {
+        console.error('PHONE OTP ERROR:', phoneErr);
+        setConfirmationResult(null);
+        setPhoneOtpRequired(false);
+        toast.error(phoneErr.message || 'Phone OTP could not be sent. Continue with Email OTP.');
+        toast.success('Email OTP generated. Continue with Email verification.');
+      }
       setStep(2);
     } catch (err) {
       console.error(err);
@@ -85,10 +94,10 @@ export default function Register() {
     e.preventDefault();
     setLoading(true);
     try {
-      // 1. Verify Phone OTP via Firebase
-      await confirmationResult.confirm(form.phoneOtp);
+      if (phoneOtpRequired && confirmationResult) {
+        await confirmationResult.confirm(form.phoneOtp);
+      }
       
-      // 2. Register via Backend (Verified phone code on client)
       const user = await register(form);
       setSuccessData(user);
       toast.success(`Registration complete!`);
@@ -233,8 +242,10 @@ export default function Register() {
             <form onSubmit={handleSubmit}>
               <div style={{ background:'rgba(0,180,216,0.08)', borderRadius:10, padding:20, marginBottom:24, textAlign:'center' }}>
                 <h3 style={{ fontSize:18, fontWeight:700, color:'var(--primary)', marginBottom:8 }}>Enter Verification Codes</h3>
-                <p style={{ fontSize:13, color:'var(--text-muted)' }}>We sent a 6-digit OTP to your Email and Phone.</p>
-                <p style={{ fontSize:11, color:'var(--warning)', marginTop:8 }}>(Since this is a demo, check the backend console for the OTP!)</p>
+                <p style={{ fontSize:13, color:'var(--text-muted)' }}>
+                  {phoneOtpRequired ? 'We sent a 6-digit OTP to your Email and Phone.' : 'We generated an Email OTP. Phone SMS is unavailable right now.'}
+                </p>
+                <p style={{ fontSize:11, color:'var(--warning)', marginTop:8 }}>(In debug mode, use the Email OTP shown below.)</p>
               </div>
 
               {debugEmailOtp && (
@@ -248,11 +259,13 @@ export default function Register() {
                   onChange={e => setForm({...form, emailOtp: e.target.value})} required maxLength={6} pattern="[0-9]{6}"/>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Phone OTP *</label>
-                <input className="form-input" placeholder="Enter 6-digit Phone OTP (SMS)" value={form.phoneOtp}
-                  onChange={e => setForm({...form, phoneOtp: e.target.value})} required maxLength={6} pattern="[0-9]{6}"/>
-              </div>
+              {phoneOtpRequired && (
+                <div className="form-group">
+                  <label className="form-label">Phone OTP *</label>
+                  <input className="form-input" placeholder="Enter 6-digit Phone OTP (SMS)" value={form.phoneOtp}
+                    onChange={e => setForm({...form, phoneOtp: e.target.value})} required maxLength={6} pattern="[0-9]{6}"/>
+                </div>
+              )}
 
               <button className="btn btn-primary w-full" type="submit" disabled={loading} style={{ justifyContent:'center', marginTop:16 }}>
                 {loading ? <><div className="spinner" style={{ width:18, height:18, borderWidth:2 }}/> Registering...</> : <>Verify & Complete Registration <ArrowRight size={16}/></>}
