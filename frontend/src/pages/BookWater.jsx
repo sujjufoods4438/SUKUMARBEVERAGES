@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { MapPin, Crosshair, ArrowRight, CheckCircle, CreditCard, Lock, Smartphone, QrCode, Clock } from 'lucide-react';
+import axios from 'axios';
 import toast from 'react-hot-toast';
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export default function BookWater() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const priceParam = params.get('price');
   const amount = priceParam === '50' ? '50' : '1,500';
   const amountValue = priceParam === '50' ? 50 : 1500;
@@ -71,12 +75,56 @@ export default function BookWater() {
   const handlePayment = async (e) => {
     e?.preventDefault();
     setLoading(true);
-    // Simulate payment API call
-    setTimeout(() => {
+    
+    try {
+      // Get user token from localStorage
+      const userData = JSON.parse(localStorage.getItem('aw_user') || '{}');
+      const token = userData?.token;
+      
+      if (!token) {
+        toast.error('Please login first to place an order');
+        setLoading(false);
+        navigate('/login');
+        return;
+      }
+
+      // First fetch products to get product ID
+      const productsRes = await axios.get(`${API}/products`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const product = productsRes.data[0];
+      
+      if (!product) {
+        toast.error('No products available');
+        setLoading(false);
+        return;
+      }
+
+      // Create the order
+      const orderData = {
+        productId: product._id,
+        quantity: priceParam === '50' ? 1 : 3, // 1 bottle for ₹50, 3 for ₹1500
+        paymentMethod: paymentMethod === 'card' ? 'Card' : paymentMethod === 'upi' ? 'UPI' : 'Cash',
+        transactionId: 'TXN' + Date.now(),
+        gstNumber: ''
+      };
+
+      await axios.post(`${API}/orders`, orderData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
       setSuccess(true);
+      toast.success('Payment successful! Water booked. Redirecting to dashboard...');
+      
+      // Auto redirect to dashboard after 2 seconds
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Order failed. Please try again.');
+    } finally {
       setLoading(false);
-      toast.success('Payment successful! Water booked.');
-    }, 2000);
+    }
   };
 
   const formatTime = (seconds) => {
@@ -94,7 +142,14 @@ export default function BookWater() {
           </div>
           <h2 style={{ fontSize:24, fontWeight:800, marginBottom:8 }}>Booking & Payment Confirmed!</h2>
           <p style={{ color:'var(--text-muted)', marginBottom:24 }}>Your water bottle delivery has been scheduled and payment of ₹{amount} was received.</p>
-          <button className="btn btn-primary w-full" onClick={() => window.location.reload()} style={{ justifyContent:'center' }}>Book Another <ArrowRight size={16}/></button>
+          <div style={{ display:'flex', gap:12, flexDirection:'column' }}>
+            <button className="btn btn-primary w-full" onClick={() => navigate('/dashboard')} style={{ justifyContent:'center' }}>
+              View My Orders <ArrowRight size={16}/>
+            </button>
+            <button className="btn btn-outline w-full" onClick={() => window.location.reload()} style={{ justifyContent:'center' }}>
+              Book Another
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Droplets, Shield, Zap, Heart, Star, ArrowRight, CheckCircle, Award, Truck, Users } from 'lucide-react';
+import WaveAnimation from '../components/WaveAnimation';
 
 const BUBBLES = Array.from({ length: 12 }, (_, i) => ({
   id: i,
@@ -30,8 +31,77 @@ export default function Home() {
   return (
     <div className="page-wrap">
 
-      {/* ── Hero ── */}
+      {/* ── Hero with Wave Animation ── */}
       <section className="water-bg" style={{ position:'relative', overflow:'hidden', minHeight:'100vh', display:'flex', alignItems:'center' }}>
+        {/* Full-screen wave animation background */}
+        <WaveAnimation />
+
+        {/* Top Left Logo */}
+        <div style={{
+          position: 'absolute',
+          top: 24,
+          left: 24,
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          background: 'rgba(0, 13, 26, 0.6)',
+          backdropFilter: 'blur(10px)',
+          padding: '10px 18px',
+          borderRadius: 12,
+          border: '1px solid rgba(144,224,239,0.2)',
+        }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #00b4d8, #0077b6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 15px rgba(0,180,216,0.4)',
+          }}>
+            <Droplets size={18} color="#fff" />
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', letterSpacing: 0.5 }}>Sukumar</div>
+            <div style={{ fontSize: 10, color: 'rgba(144,224,239,0.8)', letterSpacing: 2, textTransform: 'uppercase' }}>Industries</div>
+          </div>
+        </div>
+
+        {/* Top Right Logo */}
+        <div style={{
+          position: 'absolute',
+          top: 24,
+          right: 24,
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          background: 'rgba(0, 13, 26, 0.6)',
+          backdropFilter: 'blur(10px)',
+          padding: '10px 18px',
+          borderRadius: 12,
+          border: '1px solid rgba(144,224,239,0.2)',
+        }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', letterSpacing: 0.5, textAlign: 'right' }}>AW Water</div>
+            <div style={{ fontSize: 10, color: 'rgba(144,224,239,0.8)', letterSpacing: 2, textTransform: 'uppercase', textAlign: 'right' }}>Alkaline 2.0</div>
+          </div>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #90e0ef, #00b4d8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 15px rgba(0,180,216,0.4)',
+          }}>
+            <Droplets size={18} color="#000d1a" />
+          </div>
+        </div>
+
         {/* Animated bubbles */}
         {BUBBLES.map(b => (
           <span key={b.id} className="bubble" style={{
